@@ -40,7 +40,7 @@ async function getBusData() {
 
 // function to asynchronously request route data from MBTA
 async function getRouteData(route) {
-    const url = "https://api-v3.mbta.com/stops?filter[route]=" + (typeof route === "Number" ? route.toString : route);
+    const url = "https://api-v3.mbta.com/stops?filter[route]=" + (typeof route === "Number" ? route.toString() : route);
     const response = await fetch(url);
     const json = await response.json();
     return json.data;
@@ -95,7 +95,13 @@ async function update() {
         }
     }
 
-    // [TODO]: handle busses leaving service
+    // essentially this asks the markers array to give us only markers that do not have a corresponding
+    // bus in the busses array, and are thus out of service
+    const invalidMarkers = markers.filter((marker) => !busses.some((bus) => bus.id == marker.id));
+    // tell each marker to remove itself
+    // note: this removes these markers from the map, NOT from the markers array
+    // they are thus still polluting the markers array (unresolved issue, out of time!)
+    invalidMarkers.forEach((marker) => marker.remove());
 }
 
 // 
