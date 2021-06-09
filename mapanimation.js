@@ -146,8 +146,9 @@ async function paintRoute(map, stops, layerId, sourceId) {
             'line-cap': 'round'
         },
         paint: {
-            'line-color': '#888',
-            'line-width': 8
+            'line-color': '#4287f5',
+            'line-width': 6,
+            'line-opacity': .35
         }
     });
 }
