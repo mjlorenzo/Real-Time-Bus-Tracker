@@ -12,37 +12,62 @@ var map = new mapboxgl.Map({
     zoom: 12
 });
 
-// define array of coordinates for bus stops
-const busStopCoordinates = [
-    [-71.093729, 42.359244],
-    [-71.094915, 42.360175],
-    [-71.095800, 42.360698],
-    [-71.099558, 42.362953],
-    [-71.103476, 42.365248],
-    [-71.106067, 42.366806],
-    [-71.108717, 42.368355],
-    [-71.110799, 42.369192],
-    [-71.113095, 42.370218],
-    [-71.115476, 42.372085],
-    [-71.117585, 42.373016],
-    [-71.118625, 42.374863]
-];
+// define an empty array for markers for right now
+const markers = [];
 
-// create the marker at the first stop
-var marker = new mapboxgl.Marker()
-    .setLngLat(busStopCoordinates[0])
-    .addTo(map);
-
-// set our counter to 1, since we're already at position 0
-var counter = 1;
-
-// define the move() function to reposition the marker to the next stop
-// every second
-function move() {
-    setTimeout(() => {
-        if (counter >= busStopCoordinates.length) return;
-        marker.setLngLat(busStopCoordinates[counter]);
-        counter++;
-        move();
-    }, 1000);
+// function to asynchronously request bus data from MBTA
+async function getBusData(){
+	const url = 'https://api-v3.mbta.com/vehicles?filter[route]=1&include=trip';
+	const response = await fetch(url);
+	const json     = await response.json();
+	return json.data;
 }
+
+// define an object to describe a particular bus
+function Bus(id, coordinates) {
+    this.id = id;
+    this.coordinates = coordinates;
+    return this;
+}
+// utility function to shortcut extracting from JSON
+Bus.fromJSON = function (json) {
+    return new Bus(json.id, getBusCoordinates(json))
+}
+
+// retrieve coordinate data from the parsed JSON
+function getBusCoordinates(bus) {
+    return [bus.attributes.longitude, bus.attributes.latitude];
+}
+
+// define an update() function to handle data retrieval and update markers
+async function update(map, markers = []) {
+    let busData = await getBusData();
+    let busses = busData.map((bus) => Bus.fromJSON(bus));
+
+    // loop through the busses
+    for (bus of busses) {
+        // if a marker doesn't exist for this bus, add one
+        let currentMarker = markers.find((item) => item.id == bus.id);
+        if (!currentMarker) {
+            markers.push({
+                id: bus.id,
+                marker: new mapboxgl.Marker()
+                .setLngLat(bus.coordinates)
+                .addTo(map)
+            });
+        }
+        // if one does, update it
+        else {
+            currentMarker.marker.setLngLat(bus.coordinates);
+        }
+    }
+
+    // [TODO]: handle busses leaving service
+}
+
+// run update() once to get initial data
+update(map, markers);
+// set update() to run every 15 seconds, save the timer ID
+let intervalId = setInterval(() => update(map, markers), 15000);
+// tell the window to cancel the timer when the window closes
+window.onunload = () => clearInterval(intervalId);
